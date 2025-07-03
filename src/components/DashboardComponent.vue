@@ -291,7 +291,7 @@
       <div class="sidebar-footer">
         <button @click="handleLogout" class="btn btn-outline-danger btn-sm w-100">
           <i class="fas fa-sign-out-alt sidebar-icon"></i>
-          <span v-if="!sidebarCollapsed" class="sidebar-text">Cerrar Sesión</span>
+          <span v-if="!sidebarCollapsed || isMobile" class="sidebar-text">Cerrar Sesión</span>
         </button>
       </div>
     </aside>
