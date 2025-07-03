@@ -30,8 +30,14 @@ export default {
       showCreateForm: false,
       editingItem: null,
       formData: {
-        // Datos generales
+        // Campos requeridos por la API
+        periodo_lectivo: '',
+        profesor: '',
         facultad: '',
+        carrera: '',
+        curso: '',
+        
+        // Datos generales adicionales
         semestre: '',
         area_formacion: '',
         tipo_curso: '',
@@ -56,11 +62,8 @@ export default {
         unidades: [],
         criterios: [],
         
-        // Para compatibilidad con API existente (si es necesario)
+        // Metadatos
         nombre: '',
-        periodo_lectivo: '',
-        profesor: '',
-        curso: '',
         activo: true
       },
       /* paginación / búsqueda */
@@ -279,10 +282,11 @@ export default {
             this.formData.periodo = cursoDetalle.semestre_detalle.semestre_academico_detalle.periodo || '';
           }
 
-          // Autocompletar carrera profesional
+          // Autocompletar carrera profesional (mapear a ambos campos)
           if (cursoDetalle.semestre_detalle.plan_detalle?.carrera_detalle) {
             const carrera = cursoDetalle.semestre_detalle.plan_detalle.carrera_detalle;
-            this.formData.carrera_profesional = carrera.id;
+            this.formData.carrera = carrera.id; // Campo requerido por API
+            this.formData.carrera_profesional = carrera.id; // Campo adicional
             
             // Autocompletar facultad
             if (carrera.departamento_detalle?.facultad_detalle) {
@@ -323,6 +327,25 @@ export default {
       }
     },
 
+    /* ---------- Validaciones ---------- */
+    validateForm() {
+      const errors = [];
+      
+      // Validar campos requeridos por la API
+      if (!this.formData.periodo_lectivo) errors.push('El periodo lectivo es requerido');
+      if (!this.formData.profesor) errors.push('El profesor es requerido');
+      if (!this.formData.facultad) errors.push('La facultad es requerida');
+      if (!this.formData.carrera) errors.push('La carrera es requerida');
+      if (!this.formData.curso) errors.push('El curso es requerido');
+      
+      // Validar peso de criterios
+      if (this.formData.criterios.length > 0 && this.totalPeso !== 100) {
+        errors.push('La suma de los pesos de evaluación debe ser exactamente 100%');
+      }
+      
+      return errors;
+    },
+
     /* ---------- Manejo de Unidades ---------- */
     addUnidad() {
       this.formData.unidades.push({
@@ -359,9 +382,10 @@ export default {
 
     /* ---------- Crear / Actualizar ---------- */
     async submitForm() {
-      // Validaciones básicas
-      if (this.totalPeso !== 100 && this.formData.criterios.length > 0) {
-        this.error = 'La suma de los pesos de evaluación debe ser exactamente 100%';
+      // Validar formulario
+      const validationErrors = this.validateForm();
+      if (validationErrors.length > 0) {
+        this.error = validationErrors.join(', ');
         return;
       }
 
@@ -373,11 +397,36 @@ export default {
         const url = this.editingItem ? SILABO_API.DETAIL(this.editingItem.id) : SILABO_API.LIST;
         const method = this.editingItem ? 'PUT' : 'POST';
         
-        // Preparar payload - ajusta según tu API
-        const payload = { 
-          ...this.formData,
-          // Si tu API necesita un nombre principal, puedes generarlo automáticamente
-          nombre: this.formData.nombre || `Sílabo ${this.formData.codigo_curso} - ${this.formData.periodo}`
+        // Preparar payload asegurando que los campos requeridos estén presentes
+        const payload = {
+          // Campos requeridos por la API
+          periodo_lectivo: this.formData.periodo_lectivo,
+          profesor: this.formData.profesor,
+          facultad: this.formData.facultad,
+          carrera: this.formData.carrera,
+          curso: this.formData.curso,
+          
+          // Campos adicionales
+          nombre: this.formData.nombre || `Sílabo ${this.formData.codigo_curso} - ${this.formData.periodo}`,
+          semestre: this.formData.semestre,
+          area_formacion: this.formData.area_formacion,
+          tipo_curso: this.formData.tipo_curso,
+          nro_creditos: this.formData.nro_creditos,
+          prerrequisitos: this.formData.prerrequisitos,
+          periodo: this.formData.periodo,
+          horas_teoria: this.formData.horas_teoria,
+          horas_practica: this.formData.horas_practica,
+          codigo_curso: this.formData.codigo_curso,
+          docente: this.formData.docente,
+          correo_docente: this.formData.correo_docente,
+          competencia_curso: this.formData.competencia_curso,
+          competencia_perfil: this.formData.competencia_perfil,
+          competencias_previas: this.formData.competencias_previas,
+          sumilla: this.formData.sumilla,
+          actividades_rsu: this.formData.actividades_rsu,
+          unidades: this.formData.unidades,
+          criterios: this.formData.criterios,
+          activo: this.formData.activo
         };
 
         const res = await fetch(url, {
@@ -391,13 +440,32 @@ export default {
 
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(Object.values(errorData).flat().join(', '));
+          console.error('Error response:', errorData);
+          
+          // Formatear errores de validación
+          const errorMessages = [];
+          if (typeof errorData === 'object') {
+            for (const [field, messages] of Object.entries(errorData)) {
+              if (Array.isArray(messages)) {
+                errorMessages.push(`${field}: ${messages.join(', ')}`);
+              } else {
+                errorMessages.push(`${field}: ${messages}`);
+              }
+            }
+          }
+          
+          throw new Error(errorMessages.length > 0 ? errorMessages.join('; ') : 'Error al procesar la solicitud');
         }
 
         await this.fetchSilabos();
         this.cancelForm();
+        
+        // Mostrar mensaje de éxito
+        console.log(`Sílabo ${this.editingItem ? 'actualizado' : 'creado'} exitosamente`);
+        
       } catch (err) { 
         this.error = err.message; 
+        console.error('Error en submitForm:', err);
       } finally { 
         this.loading = false; 
       }
@@ -407,8 +475,15 @@ export default {
     editItem(silabo) {
       this.editingItem = silabo;
       this.formData = {
-        // Mapear datos del sílabo existente
+        // Campos requeridos por la API
+        periodo_lectivo: silabo.periodo_lectivo || '',
+        profesor: silabo.profesor || '',
         facultad: silabo.facultad || '',
+        carrera: silabo.carrera || '',
+        curso: silabo.curso || '',
+        
+        // Campos adicionales
+        nombre: silabo.nombre || '',
         semestre: silabo.semestre || '',
         area_formacion: silabo.area_formacion || '',
         tipo_curso: silabo.tipo_curso || '',
@@ -420,22 +495,14 @@ export default {
         horas_practica: silabo.horas_practica || null,
         codigo_curso: silabo.codigo_curso || '',
         docente: silabo.docente || silabo.profesor_detalle?.persona?.nombre || '',
-        correo_docente: silabo.correo_docente || '',
-        
+        correo_docente: silabo.correo_docente || silabo.profesor_detalle?.persona?.usuario?.email || '',
         competencia_curso: silabo.competencia_curso || '',
         competencia_perfil: silabo.competencia_perfil || silabo.competencia_perfil_egreso || '',
         competencias_previas: silabo.competencias_previas || silabo.competencia_profesional || '',
         sumilla: silabo.sumilla || '',
         actividades_rsu: silabo.actividades_rsu || '',
-        
         unidades: silabo.unidades || [],
         criterios: silabo.criterios || [],
-        
-        // Para compatibilidad
-        nombre: silabo.nombre || '',
-        periodo_lectivo: silabo.periodo_lectivo || '',
-        profesor: silabo.profesor || '',
-        curso: silabo.curso || '',
         activo: silabo.activo !== undefined ? silabo.activo : true
       };
       this.showCreateForm = true;
@@ -473,7 +540,15 @@ export default {
 
     resetFormData() {
       this.formData = {
+        // Campos requeridos por la API
+        periodo_lectivo: '',
+        profesor: '',
         facultad: '',
+        carrera: '',
+        curso: '',
+        
+        // Campos adicionales
+        nombre: '',
         semestre: '',
         area_formacion: '',
         tipo_curso: '',
@@ -493,10 +568,6 @@ export default {
         actividades_rsu: '',
         unidades: [],
         criterios: [],
-        nombre: '',
-        periodo_lectivo: '',
-        profesor: '',
-        curso: '',
         activo: true
       };
     },
