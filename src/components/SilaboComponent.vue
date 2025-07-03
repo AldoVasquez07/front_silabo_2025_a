@@ -519,9 +519,6 @@
                 <div class="action-buttons">
                   <button @click="editItem(s)" class="btn btn-sm btn-warning">Editar</button>
                   <button @click="deleteItem(s)" class="btn btn-sm btn-danger">Eliminar</button>
-                  <button @click="goToDetail(s.id)" class="btn btn-sm btn-info" title="Ver Detalle">
-                    👁️
-                  </button>
                 </div>
               </td>
             </tr>
@@ -535,13 +532,7 @@
 <script>
 import SilaboComponent from '@/scripts/silabo/logicaSilabo'
 export default {
-  ...SilaboComponent,
-  methods: {
-    ...SilaboComponent.methods,
-    goToDetail(id) {
-      this.$router.push({ name: 'SilaboDetalle', params: { id } });
-    }
-  }
+  ...SilaboComponent
 }
 </script>
 
