@@ -1,20 +1,29 @@
 <template>
   <div class="dashboard-container">
     <!-- Menú lateral -->
-    <aside class="sidebar" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+    <button class="mobile-sidebar-toggle" @click="toggleMobileSidebar" v-if="isMobile">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar-overlay" :class="{ 'show': isMobile && mobileSidebarOpen }" @click="closeMobileSidebar"></div>
+
+    <aside class="sidebar" :class="{
+      'sidebar-collapsed': !isMobile && sidebarCollapsed,
+      'sidebar-open': isMobile && mobileSidebarOpen
+    }">
       <div class="sidebar-header">
-        <h3 v-if="!sidebarCollapsed" class="h5 mb-0">Mi App</h3>
-        <button @click="toggleSidebar" class="btn btn-link text-white p-1">
-          <i :class="sidebarCollapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left'"></i>
+        <h3 v-if="!sidebarCollapsed || isMobile" class="h5 mb-0">Mi App</h3>
+        <button @click="isMobile ? closeMobileSidebar() : toggleSidebar()" class="btn btn-link text-white p-1">
+          <i :class="getToggleIcon()"></i>
         </button>
       </div>
-      
+
       <nav class="sidebar-nav">
         <ul class="nav flex-column">
           <!-- Dashboard -->
           <li class="nav-item">
-            <a href="#" @click="setActiveSection('dashboard')" 
-               class="nav-link" :class="{ active: activeSection === 'dashboard' }">
+            <a href="#" @click="setActiveSection('dashboard')" class="nav-link"
+              :class="{ active: activeSection === 'dashboard' }">
               <i class="fas fa-tachometer-alt sidebar-icon"></i>
               <span v-if="!sidebarCollapsed" class="sidebar-text">Dashboard</span>
             </a>
@@ -22,30 +31,30 @@
 
           <!-- Gestión de Usuarios -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('gestionUsuarios')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('gestionUsuarios') }">
+            <a href="#" @click="toggleSubMenu('gestionUsuarios')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('gestionUsuarios') }">
               <div>
                 <i class="fas fa-users sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Gestión de Usuarios</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.gestionUsuarios ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.gestionUsuarios ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.gestionUsuarios && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('estudiantes')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'estudiantes' }">
+                  <a href="#" @click="setActiveSection('estudiantes')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'estudiantes' }">
                     <i class="fas fa-user-graduate sidebar-icon"></i>
                     <span class="sidebar-text">Estudiantes</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('profesor')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'profesor' }">
+                  <a href="#" @click="setActiveSection('profesor')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'profesor' }">
                     <i class="fas fa-chalkboard-teacher sidebar-icon"></i>
                     <span class="sidebar-text">Profesores</span>
                   </a>
@@ -56,51 +65,51 @@
 
           <!-- Estructura Institucional -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('estructuraInstitucional')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('estructuraInstitucional') }">
+            <a href="#" @click="toggleSubMenu('estructuraInstitucional')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('estructuraInstitucional') }">
               <div>
                 <i class="fas fa-sitemap sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Estructura Institucional</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.estructuraInstitucional ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.estructuraInstitucional ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.estructuraInstitucional && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('universidad')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'universidad' }">
+                  <a href="#" @click="setActiveSection('universidad')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'universidad' }">
                     <i class="fas fa-university sidebar-icon"></i>
                     <span class="sidebar-text">Universidad</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('facultad')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'facultad' }">
+                  <a href="#" @click="setActiveSection('facultad')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'facultad' }">
                     <i class="fas fa-building sidebar-icon"></i>
                     <span class="sidebar-text">Facultad</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('departamento')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'departamento' }">
+                  <a href="#" @click="setActiveSection('departamento')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'departamento' }">
                     <i class="fas fa-door-open sidebar-icon"></i>
                     <span class="sidebar-text">Departamento</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('carrera')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'carrera' }">
+                  <a href="#" @click="setActiveSection('carrera')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'carrera' }">
                     <i class="fas fa-graduation-cap sidebar-icon"></i>
                     <span class="sidebar-text">Carrera</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('area')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'area' }">
+                  <a href="#" @click="setActiveSection('area')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'area' }">
                     <i class="fas fa-map-marked-alt sidebar-icon"></i>
                     <span class="sidebar-text">Área</span>
                   </a>
@@ -111,44 +120,44 @@
 
           <!-- Currículo Académico -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('curriculoAcademico')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('curriculoAcademico') }">
+            <a href="#" @click="toggleSubMenu('curriculoAcademico')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('curriculoAcademico') }">
               <div>
                 <i class="fas fa-book-open sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Currículo Académico</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.curriculoAcademico ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.curriculoAcademico ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.curriculoAcademico && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('plan')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'plan' }">
+                  <a href="#" @click="setActiveSection('plan')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'plan' }">
                     <i class="fas fa-clipboard-list sidebar-icon"></i>
                     <span class="sidebar-text">Plan Curricular</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('curso')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'curso' }">
+                  <a href="#" @click="setActiveSection('curso')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'curso' }">
                     <i class="fas fa-book sidebar-icon"></i>
                     <span class="sidebar-text">Cursos</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('silabo')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'silabo' }">
+                  <a href="#" @click="setActiveSection('silabo')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'silabo' }">
                     <i class="fas fa-file-alt sidebar-icon"></i>
                     <span class="sidebar-text">Sílabo</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('unidad')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'unidad' }">
+                  <a href="#" @click="setActiveSection('unidad')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'unidad' }">
                     <i class="fas fa-puzzle-piece sidebar-icon"></i>
                     <span class="sidebar-text">Unidades</span>
                   </a>
@@ -159,37 +168,37 @@
 
           <!-- Planificación Académica -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('planificacionAcademica')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('planificacionAcademica') }">
+            <a href="#" @click="toggleSubMenu('planificacionAcademica')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('planificacionAcademica') }">
               <div>
                 <i class="fas fa-calendar-alt sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Planificación Académica</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.planificacionAcademica ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.planificacionAcademica ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.planificacionAcademica && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('semestreplan')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'semestreplan' }">
+                  <a href="#" @click="setActiveSection('semestreplan')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'semestreplan' }">
                     <i class="fas fa-calendar-week sidebar-icon"></i>
                     <span class="sidebar-text">Plan de Semestre</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('semana')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'semana' }">
+                  <a href="#" @click="setActiveSection('semana')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'semana' }">
                     <i class="fas fa-calendar-day sidebar-icon"></i>
                     <span class="sidebar-text">Semanas</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('actividad')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'actividad' }">
+                  <a href="#" @click="setActiveSection('actividad')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'actividad' }">
                     <i class="fas fa-tasks sidebar-icon"></i>
                     <span class="sidebar-text">Actividades</span>
                   </a>
@@ -200,23 +209,23 @@
 
           <!-- Competencias y Evaluación -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('competenciasEvaluacion')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('competenciasEvaluacion') }">
+            <a href="#" @click="toggleSubMenu('competenciasEvaluacion')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('competenciasEvaluacion') }">
               <div>
                 <i class="fas fa-medal sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Desempeño</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.competenciasEvaluacion ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.competenciasEvaluacion ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.competenciasEvaluacion && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('criterio')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'criterio' }">
+                  <a href="#" @click="setActiveSection('criterio')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'criterio' }">
                     <i class="fas fa-check-square sidebar-icon"></i>
                     <span class="sidebar-text">Criterio</span>
                   </a>
@@ -227,30 +236,30 @@
 
           <!-- Recursos Académicos -->
           <li class="nav-item">
-            <a href="#" @click="toggleSubMenu('recursosAcademicos')" 
-               class="nav-link d-flex justify-content-between align-items-center"
-               :class="{ active: isParentActive('recursosAcademicos') }">
+            <a href="#" @click="toggleSubMenu('recursosAcademicos')"
+              class="nav-link d-flex justify-content-between align-items-center"
+              :class="{ active: isParentActive('recursosAcademicos') }">
               <div>
                 <i class="fas fa-tools sidebar-icon"></i>
                 <span v-if="!sidebarCollapsed" class="sidebar-text">Recursos Académicos</span>
               </div>
-              <i v-if="!sidebarCollapsed" 
-                 :class="subMenus.recursosAcademicos ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
-                 class="submenu-arrow"></i>
+              <i v-if="!sidebarCollapsed"
+                :class="subMenus.recursosAcademicos ? 'fas fa-chevron-down' : 'fas fa-chevron-right'"
+                class="submenu-arrow"></i>
             </a>
-            
+
             <div v-if="subMenus.recursosAcademicos && !sidebarCollapsed" class="submenu">
               <ul class="nav flex-column">
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('bibliografia')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'bibliografia' }">
+                  <a href="#" @click="setActiveSection('bibliografia')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'bibliografia' }">
                     <i class="fas fa-book sidebar-icon"></i>
                     <span class="sidebar-text">Bibliografías</span>
                   </a>
                 </li>
                 <li class="nav-item">
-                  <a href="#" @click="setActiveSection('profesion')" 
-                     class="nav-link submenu-link" :class="{ active: activeSection === 'profesion' }">
+                  <a href="#" @click="setActiveSection('profesion')" class="nav-link submenu-link"
+                    :class="{ active: activeSection === 'profesion' }">
                     <i class="fas fa-briefcase sidebar-icon"></i>
                     <span class="sidebar-text">Profesiones</span>
                   </a>
@@ -261,8 +270,8 @@
 
           <!-- Reportes -->
           <li class="nav-item">
-            <a href="#" @click="setActiveSection('reportes')" 
-               class="nav-link" :class="{ active: activeSection === 'reportes' }">
+            <a href="#" @click="setActiveSection('reportes')" class="nav-link"
+              :class="{ active: activeSection === 'reportes' }">
               <i class="fas fa-chart-bar sidebar-icon"></i>
               <span v-if="!sidebarCollapsed" class="sidebar-text">Reportes</span>
             </a>
@@ -270,8 +279,8 @@
 
           <!-- Configuración -->
           <li class="nav-item">
-            <a href="#" @click="setActiveSection('configuracion')" 
-               class="nav-link" :class="{ active: activeSection === 'configuracion' }">
+            <a href="#" @click="setActiveSection('configuracion')" class="nav-link"
+              :class="{ active: activeSection === 'configuracion' }">
               <i class="fas fa-cog sidebar-icon"></i>
               <span v-if="!sidebarCollapsed" class="sidebar-text">Configuración</span>
             </a>
@@ -295,8 +304,8 @@
           <div class="user-info d-flex align-items-center">
             <i class="fas fa-user-circle fa-2x text-muted me-2"></i>
             <div class="user-details">
-              <small class="text-muted d-block">{{fullName}}</small>
-              <strong>{{emailUser}}</strong>
+              <small class="text-muted d-block">{{ fullName }}</small>
+              <strong>{{ emailUser }}</strong>
             </div>
           </div>
         </div>
