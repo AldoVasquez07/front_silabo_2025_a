@@ -624,6 +624,6 @@ export default {
 @import '@/assets/dashboard/global.css';
 </style>
 
-<style scoped>
+<!-- <style scoped>
 @import '@/assets/dashboard/particular.css';
-</style>
+</style> -->
