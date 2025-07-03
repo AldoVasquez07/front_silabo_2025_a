@@ -12,7 +12,7 @@
       'sidebar-open': isMobile && mobileSidebarOpen
     }">
       <div class="sidebar-header">
-        <h3 v-if="!sidebarCollapsed || isMobile" class="h5 mb-0">Mi App</h3>
+        <h3 v-if="!sidebarCollapsed || isMobile" class="h5 mb-0">La Salle</h3>
         <button @click="isMobile ? closeMobileSidebar() : toggleSidebar()" class="btn btn-link text-white p-1">
           <i :class="getToggleIcon()"></i>
         </button>
