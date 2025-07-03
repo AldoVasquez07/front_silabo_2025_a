@@ -146,6 +146,16 @@
               </div>
 
               <div class="form-group">
+                <label class="form-label required">Curso</label>
+                <select v-model="formData.curso" class="form-select" required>
+                  <option value="">Seleccionar curso</option>
+                  <option v-for="curso in cursos" :key="curso.id" :value="curso.id">
+                    {{ curso.codigo }} - {{ curso.nombre }}
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group">
                 <label class="form-label required">Docente responsable</label>
                 <input v-model="formData.docente" type="text" class="form-input" placeholder="Nombre del docente"
                   required>
