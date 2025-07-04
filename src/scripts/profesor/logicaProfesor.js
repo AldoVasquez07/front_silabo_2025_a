@@ -11,19 +11,22 @@ export default {
             showCreateForm: false,
             editingItem: null,
             formData: {
-                usuario: {
-                    username: '',
-                    password: '',
-                    first_name: '',
-                    last_name: '',
-                    email: ''
+                persona: {
+                    usuario: {
+                        email: '',
+                        password: ''
+                    },
+                    nombre: '',
+                    apellido_paterno: '',
+                    apellido_materno: '',
+                    dni: '',
+                    fecha_nacimiento: '',
+                    genero: '',
+                    nacionalidad: '',
+                    telefono: ''
                 },
-                profesion_id: '',
-                dni: '',
-                genero: '',
-                fecha_nacimiento: '',
-                nacionalidad: '',
-                telefono: ''
+                profesion: '',
+                activo: true
             },
             currentPage: 1,
             itemsPerPage: 10,
@@ -76,6 +79,7 @@ export default {
     mounted() {
         this.fetchProfesores();
         this.fetchProfesiones();
+        this.checkApiConfiguration();
     },
     methods: {
         formatErrors(errors, parentKey = '') {
@@ -112,17 +116,49 @@ export default {
         async fetchProfesores() {
             this.loading = true;
             this.error = null;
+
             try {
                 const token = localStorage.getItem('access_token');
+
+                if (!token) {
+                    throw new Error('No hay token de autenticación');
+                }
+
+                console.log('Fetching from:', PROFESOR_API.LIST);
+
                 const response = await fetch(PROFESOR_API.LIST, {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     }
                 });
-                if (!response.ok) throw new Error('Error al cargar profesores');
+
+                console.log('Fetch response status:', response.status);
+                console.log('Fetch response content-type:', response.headers.get('content-type'));
+
+                if (!response.ok) {
+                    const responseText = await response.text();
+                    console.error('Fetch error response:', responseText);
+
+                    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                        throw new Error(`Error del servidor (${response.status}): Revisa la URL del API y la autenticación`);
+                    }
+
+                    throw new Error(`Error ${response.status}: ${responseText}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const responseText = await response.text();
+                    console.error('Non-JSON response in fetch:', responseText);
+                    throw new Error('El servidor no devolvió una respuesta JSON válida');
+                }
+
                 this.profesores = await response.json();
+                console.log('Profesores loaded:', this.profesores.length);
+
             } catch (error) {
+                console.error('Error in fetchProfesores:', error);
                 this.error = error.message;
             } finally {
                 this.loading = false;
@@ -135,30 +171,42 @@ export default {
 
             try {
                 const token = localStorage.getItem('access_token');
+
+                // Check if token exists
+                if (!token) {
+                    throw new Error('No hay token de autenticación. Por favor, inicia sesión nuevamente.');
+                }
+
                 const isEditing = !!this.editingItem;
                 const url = isEditing ? PROFESOR_API.DETAIL(this.editingItem.id) : PROFESOR_API.LIST;
                 const method = isEditing ? 'PUT' : 'POST';
 
-                const usuarioPayload = {
-                    username: this.formData.usuario.username,
-                    first_name: this.formData.usuario.first_name,
-                    last_name: this.formData.usuario.last_name,
-                    email: this.formData.usuario.email
+                const payload = {
+                    persona: {
+                        usuario: {
+                            email: this.formData.persona.usuario.email
+                        },
+                        nombre: this.formData.persona.nombre,
+                        apellido_paterno: this.formData.persona.apellido_paterno,
+                        apellido_materno: this.formData.persona.apellido_materno,
+                        dni: this.formData.persona.dni,
+                        fecha_nacimiento: this.formData.persona.fecha_nacimiento,
+                        genero: this.formData.persona.genero,
+                        nacionalidad: this.formData.persona.nacionalidad,
+                        telefono: this.formData.persona.telefono
+                    },
+                    profesion: parseInt(this.formData.profesion),
+                    activo: true
                 };
 
-                if (!isEditing || this.formData.usuario.password.trim()) {
-                    usuarioPayload.password = this.formData.usuario.password;
+                // Solo incluir password si no está vacío
+                if (this.formData.persona.usuario.password.trim()) {
+                    payload.persona.usuario.password = this.formData.persona.usuario.password;
                 }
 
-                const payload = {
-                    usuario: usuarioPayload,
-                    profesion_id: parseInt(this.formData.profesion_id),
-                    dni: this.formData.dni,
-                    genero: this.formData.genero,
-                    fecha_nacimiento: this.formData.fecha_nacimiento,
-                    nacionalidad: this.formData.nacionalidad,
-                    telefono: this.formData.telefono
-                };
+                console.log('Sending request to:', url);
+                console.log('Method:', method);
+                console.log('Payload:', JSON.stringify(payload, null, 2));
 
                 const response = await fetch(url, {
                     method,
@@ -169,22 +217,63 @@ export default {
                     body: JSON.stringify(payload)
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                console.log('Response content-type:', response.headers.get('content-type'));
+
+                // Check if response is ok
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(this.formatErrors(errorData).join('\n'));
+                    // Try to get the response text to see what we're actually receiving
+                    const responseText = await response.text();
+                    console.error('Raw response:', responseText);
+
+                    // Check if it's HTML (error page)
+                    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+                        throw new Error(`Error del servidor (${response.status}): El servidor devolvió una página HTML en lugar de JSON. Esto puede indicar un problema con la URL del API o autenticación.`);
+                    }
+
+                    // Try to parse as JSON
+                    try {
+                        const errorData = JSON.parse(responseText);
+                        throw new Error(this.formatErrors(errorData).join('\n'));
+                    } catch (parseError) {
+                        throw new Error(`Error ${response.status}: ${responseText || 'Error desconocido del servidor'}`);
+                    }
                 }
+
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const responseText = await response.text();
+                    console.error('Non-JSON response:', responseText);
+                    throw new Error('El servidor no devolvió una respuesta JSON válida');
+                }
+
+                const responseData = await response.json();
+                console.log('Success response:', responseData);
 
                 await this.fetchProfesores();
                 this.cancelForm();
+
             } catch (error) {
+                console.error('Error in submitForm:', error);
                 this.error = error.message;
             } finally {
                 this.loading = false;
             }
         },
 
+        checkApiConfiguration() {
+            console.log('API Configuration Check:');
+            console.log('PROFESOR_API.LIST:', PROFESOR_API.LIST);
+            console.log('PROFESOR_API.DETAIL:', typeof PROFESOR_API.DETAIL === 'function' ? 'Function defined' : PROFESOR_API.DETAIL);
+            console.log('PROFESION_API.LIST:', PROFESION_API.LIST);
+            console.log('Current token:', localStorage.getItem('access_token') ? 'Present' : 'Missing');
+            console.log('Current base URL:', window.location.origin);
+        },
+
         async deleteItem(profesor) {
-            if (!confirm(`¿Está seguro de eliminar al profesor "${profesor.usuario.first_name} ${profesor.usuario.last_name}"?`)) return;
+            if (!confirm(`¿Está seguro de eliminar al profesor "${profesor.persona.nombre} ${profesor.persona.apellido_paterno}"?`)) return;
 
             this.loading = true;
             try {
@@ -210,19 +299,22 @@ export default {
         editItem(profesor) {
             this.editingItem = profesor;
             this.formData = {
-                usuario: {
-                    username: profesor.usuario.username,
-                    first_name: profesor.usuario.first_name,
-                    last_name: profesor.usuario.last_name,
-                    email: profesor.usuario.email,
-                    password: ''
+                persona: {
+                    usuario: {
+                        email: profesor.persona.usuario.email,
+                        password: ''
+                    },
+                    nombre: profesor.persona.nombre,
+                    apellido_paterno: profesor.persona.apellido_paterno,
+                    apellido_materno: profesor.persona.apellido_materno,
+                    dni: profesor.persona.dni,
+                    fecha_nacimiento: profesor.persona.fecha_nacimiento,
+                    genero: profesor.persona.genero,
+                    nacionalidad: profesor.persona.nacionalidad,
+                    telefono: profesor.persona.telefono
                 },
-                profesion_id: profesor.profesion_id || profesor.profesion?.id || profesor.profesion_detalle?.id || '',
-                dni: profesor.dni,
-                genero: profesor.genero,
-                fecha_nacimiento: profesor.fecha_nacimiento,
-                nacionalidad: profesor.nacionalidad,
-                telefono: profesor.telefono
+                profesion: profesor.profesion,
+                activo: true
             };
             this.showCreateForm = true;
         },
@@ -231,19 +323,22 @@ export default {
             this.showCreateForm = false;
             this.editingItem = null;
             this.formData = {
-                usuario: {
-                    username: '',
-                    password: '',
-                    first_name: '',
-                    last_name: '',
-                    email: ''
+                persona: {
+                    usuario: {
+                        email: '',
+                        password: ''
+                    },
+                    nombre: '',
+                    apellido_paterno: '',
+                    apellido_materno: '',
+                    dni: '',
+                    fecha_nacimiento: '',
+                    genero: '',
+                    nacionalidad: '',
+                    telefono: ''
                 },
-                profesion_id: '',
-                dni: '',
-                genero: '',
-                fecha_nacimiento: '',
-                nacionalidad: '',
-                telefono: ''
+                profesion: '',
+                activo: true
             };
             this.error = null;
         },
@@ -269,10 +364,11 @@ export default {
             } else {
                 const term = this.searchTerm.toLowerCase();
                 this.filteredProfesores = this.profesores.filter(prof =>
-                    prof.usuario.username.toLowerCase().includes(term) ||
-                    prof.usuario.first_name.toLowerCase().includes(term) ||
-                    prof.usuario.last_name.toLowerCase().includes(term) ||
-                    prof.dni.toLowerCase().includes(term) ||
+                    prof.persona.usuario.email.toLowerCase().includes(term) ||
+                    prof.persona.nombre.toLowerCase().includes(term) ||
+                    prof.persona.apellido_paterno.toLowerCase().includes(term) ||
+                    prof.persona.apellido_materno.toLowerCase().includes(term) ||
+                    prof.persona.dni.toLowerCase().includes(term) ||
                     (prof.profesion_detalle?.nombre || '').toLowerCase().includes(term)
                 );
             }
