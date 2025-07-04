@@ -5,7 +5,8 @@ import {
   PROFESOR_API,
   FACULTADES_API,
   CARRERAS_API,
-  CURSO_API
+  CURSO_API,
+  UNIDAD_API  // ← NUEVA IMPORTACIÓN
 } from '@/config/constants';
 
 export default {
@@ -20,6 +21,7 @@ export default {
       facultades: [],
       carreras: [],
       cursos: [],
+      unidadesExistentes: [], // ← NUEVO: Para almacenar unidades del servidor
       tiposCurso: [
         { id: 'obligatorio', nombre: 'Obligatorio' },
         { id: 'electivo', nombre: 'Electivo' },
@@ -233,6 +235,106 @@ export default {
       }
     },
 
+    /* ---------- NUEVO: Fetch de unidades por sílabo ---------- */
+    async fetchUnidadesPorSilabo(silaboId) {
+      if (!silaboId) {
+        this.unidadesExistentes = [];
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(UNIDAD_API.SILABO(silaboId), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al cargar unidades del sílabo');
+        this.unidadesExistentes = await res.json();
+
+        // Cargar las unidades existentes en el formulario
+        this.cargarUnidadesEnFormulario();
+
+        console.log(`Cargadas ${this.unidadesExistentes.length} unidades para el sílabo ${silaboId}`);
+      } catch (err) {
+        console.error('Error fetching unidades por sílabo:', err.message);
+        this.unidadesExistentes = [];
+      }
+    },
+
+    /* ---------- NUEVO: Cargar unidades existentes en el formulario ---------- */
+    cargarUnidadesEnFormulario() {
+      this.formData.unidades = this.unidadesExistentes.map(unidad => ({
+        id: unidad.id, // ID para identificar si es existente
+        inicio: unidad.inicio || '',
+        final: unidad.final || '',
+        descripcion: unidad.descripcion || '',
+        metodologia: unidad.metodologia || '',
+        // Mapeo de campos legacy si los tienes
+        denominacion: unidad.descripcion || '',
+        semana: unidad.inicio && unidad.final ? `${unidad.inicio} - ${unidad.final}` : '',
+        competencia: unidad.descripcion || '',
+        contenidos: unidad.descripcion || '',
+        fuentes: ''
+      }));
+    },
+
+    /* ---------- NUEVO: Guardar unidad individual ---------- */
+    async guardarUnidad(unidadData, silaboId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const isUpdate = unidadData.id;
+
+        const payload = {
+          inicio: unidadData.inicio,
+          final: unidadData.final,
+          descripcion: unidadData.descripcion || unidadData.denominacion,
+          metodologia: unidadData.metodologia,
+          silabo: silaboId
+        };
+
+        const url = isUpdate ? UNIDAD_API.DETAIL(unidadData.id) : UNIDAD_API.LIST;
+        const method = isUpdate ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(`Error al ${isUpdate ? 'actualizar' : 'crear'} unidad: ${JSON.stringify(errorData)}`);
+        }
+
+        return await res.json();
+      } catch (err) {
+        console.error('Error guardando unidad:', err.message);
+        throw err;
+      }
+    },
+
+    /* ---------- NUEVO: Eliminar unidad del servidor ---------- */
+    async eliminarUnidadDelServidor(unidadId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(UNIDAD_API.DETAIL(unidadId), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Error al eliminar unidad del servidor');
+        }
+
+        console.log(`Unidad ${unidadId} eliminada del servidor`);
+      } catch (err) {
+        console.error('Error eliminando unidad:', err.message);
+        throw err;
+      }
+    },
+
     /* ---------- Nuevo método para obtener detalles del curso ---------- */
     async fetchCursoDetalle(cursoId) {
       try {
@@ -407,25 +509,49 @@ export default {
         errors.push('La suma de los pesos de evaluación debe ser exactamente 100%');
       }
 
+      // Validar unidades si existen
+      this.formData.unidades.forEach((unidad, index) => {
+        if (!unidad.inicio) errors.push(`La unidad ${index + 1} requiere fecha de inicio`);
+        if (!unidad.final) errors.push(`La unidad ${index + 1} requiere fecha final`);
+        if (!unidad.descripcion && !unidad.denominacion) errors.push(`La unidad ${index + 1} requiere descripción`);
+      });
+
       return errors;
     },
 
-    /* ---------- Manejo de Unidades ---------- */
+    /* ---------- Manejo de Unidades MODIFICADO ---------- */
     addUnidad() {
       this.formData.unidades.push({
+        inicio: '',
+        final: '',
+        descripcion: '',
+        metodologia: '',
+        // Campos legacy para compatibilidad
         denominacion: '',
         semana: '',
         competencia: '',
         contenidos: '',
-        metodologia: '',
         fuentes: ''
       });
     },
 
-    removeUnidad(index) {
-      if (confirm('¿Está seguro de eliminar esta unidad?')) {
-        this.formData.unidades.splice(index, 1);
+    async removeUnidad(index) {
+      if (!confirm('¿Está seguro de eliminar esta unidad?')) return;
+
+      const unidad = this.formData.unidades[index];
+
+      // Si la unidad tiene ID, eliminarla del servidor
+      if (unidad.id) {
+        try {
+          await this.eliminarUnidadDelServidor(unidad.id);
+        } catch (err) {
+          this.error = `Error al eliminar unidad: ${err.message}`;
+          return;
+        }
       }
+
+      // Eliminar de la lista local
+      this.formData.unidades.splice(index, 1);
     },
 
     /* ---------- Manejo de Criterios ---------- */
@@ -444,7 +570,7 @@ export default {
       }
     },
 
-    /* ---------- Crear / Actualizar ---------- */
+    /* ---------- Crear / Actualizar MODIFICADO ---------- */
     async submitForm() {
       // Validar formulario
       const validationErrors = this.validateForm();
@@ -461,7 +587,7 @@ export default {
         const url = this.editingItem ? SILABO_API.DETAIL(this.editingItem.id) : SILABO_API.LIST;
         const method = this.editingItem ? 'PUT' : 'POST';
 
-        // Preparar payload asegurando que los campos requeridos estén presentes
+        // Preparar payload SIN unidades (se guardan por separado)
         const payload = {
           // Campos requeridos por la API
           periodo_lectivo: this.formData.periodo_lectivo,
@@ -485,16 +611,16 @@ export default {
           correo_docente: this.formData.correo_docente,
           competencia_curso: this.formData.competencia_curso,
           competencia_perfil: this.formData.competencia_perfil,
-          competencia_perfil_egreso: this.formData.competencia_perfil, // Mapeo bidireccional
+          competencia_perfil_egreso: this.formData.competencia_perfil,
           competencia_profesional: this.formData.competencias_previas,
           competencias_previas: this.formData.competencias_previas,
           sumilla: this.formData.sumilla,
           actividades_rsu: this.formData.actividades_rsu,
-          unidades: this.formData.unidades,
           criterios: this.formData.criterios,
           activo: this.formData.activo
         };
 
+        // Guardar sílabo
         const res = await fetch(url, {
           method,
           headers: {
@@ -508,7 +634,6 @@ export default {
           const errorData = await res.json();
           console.error('Error response:', errorData);
 
-          // Formatear errores de validación
           const errorMessages = [];
           if (typeof errorData === 'object') {
             for (const [field, messages] of Object.entries(errorData)) {
@@ -523,10 +648,17 @@ export default {
           throw new Error(errorMessages.length > 0 ? errorMessages.join('; ') : 'Error al procesar la solicitud');
         }
 
+        const silaboGuardado = await res.json();
+        const silaboId = silaboGuardado.id;
+
+        // Guardar unidades por separado
+        if (this.formData.unidades.length > 0) {
+          await this.guardarUnidadesPorSeparado(silaboId);
+        }
+
         await this.fetchSilabos();
         this.cancelForm();
 
-        // Mostrar mensaje de éxito
         console.log(`Sílabo ${this.editingItem ? 'actualizado' : 'creado'} exitosamente`);
 
       } catch (err) {
@@ -537,9 +669,23 @@ export default {
       }
     },
 
-    /* ---------- Editar ---------- */
-    /* ---------- Editar ---------- */
-    editItem(silabo) {
+    /* ---------- NUEVO: Guardar unidades por separado ---------- */
+    async guardarUnidadesPorSeparado(silaboId) {
+      try {
+        const promesasUnidades = this.formData.unidades.map(unidad =>
+          this.guardarUnidad(unidad, silaboId)
+        );
+
+        await Promise.all(promesasUnidades);
+        console.log(`${this.formData.unidades.length} unidades guardadas exitosamente`);
+      } catch (err) {
+        console.error('Error guardando unidades:', err.message);
+        throw new Error(`Error al guardar unidades: ${err.message}`);
+      }
+    },
+
+    /* ---------- Editar MODIFICADO ---------- */
+    async editItem(silabo) {
       this.editingItem = silabo;
       this.formData = {
         // Campos requeridos por la API
@@ -564,17 +710,18 @@ export default {
         docente: silabo.docente || silabo.profesor_detalle?.persona?.nombre || '',
         correo_docente: silabo.correo_docente || silabo.profesor_detalle?.persona?.usuario?.email || '',
         competencia_curso: silabo.competencia_curso || '',
-
-        // CORRECCIÓN: Mapeo bidireccional correcto
         competencia_perfil: silabo.competencia_perfil || silabo.competencia_perfil_egreso || '',
         competencias_previas: silabo.competencias_previas || silabo.competencia_profesional || '',
-
         sumilla: silabo.sumilla || '',
         actividades_rsu: silabo.actividades_rsu || '',
-        unidades: silabo.unidades || [],
+        unidades: [], // Se cargarán por separado
         criterios: silabo.criterios || [],
         activo: silabo.activo !== undefined ? silabo.activo : true
       };
+
+      // Cargar unidades existentes del servidor
+      await this.fetchUnidadesPorSilabo(silabo.id);
+
       this.showCreateForm = true;
     },
 
@@ -604,6 +751,7 @@ export default {
     cancelForm() {
       this.editingItem = null;
       this.showCreateForm = false;
+      this.unidadesExistentes = []; // Limpiar unidades existentes
       this.resetFormData();
       this.error = null;
     },

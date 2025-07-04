@@ -281,10 +281,17 @@
                     <input v-model="unidad.denominacion" type="text" class="form-input"
                       placeholder="Nombre de la unidad" required>
                   </div>
+
                   <div class="form-group">
-                    <label class="form-label required">Semana(s)</label>
-                    <input v-model="unidad.semana" type="text" class="form-input"
-                      placeholder="11 de Marzo al 28 de Marzo" required>
+                    <label class="form-label required">Fecha de inicio</label>
+                    <input v-model="unidad.inicio" type="text" class="form-input"
+                      placeholder="aaaa-mm-dd" required>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label required">Fecha de fin</label>
+                    <input v-model="unidad.final" type="text" class="form-input"
+                      placeholder="aaaa-mm-dd" required>
                   </div>
                 </div>
 

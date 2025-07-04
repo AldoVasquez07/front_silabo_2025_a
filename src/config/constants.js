@@ -103,7 +103,8 @@ export const SEMANA_API = {
 
 export const UNIDAD_API = {
   LIST: `${BACK_URL}/unidades/`,
-  DETAIL: (id) => `${BACK_URL}/unidades/${id}/`
+  DETAIL: (id) => `${BACK_URL}/unidades/${id}/`,
+  SILABO: (silabo_id) => `${BACK_URL}/unidades/?silabo_id=${silabo_id}`
 }
 
 export const TIPO_CURSO_API = {
