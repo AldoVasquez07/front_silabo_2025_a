@@ -125,7 +125,12 @@
 
               <div class="form-group">
                 <label class="form-label required">Periodo lectivo</label>
-                <input v-model="formData.periodo" type="text" class="form-input" placeholder="2025-I" required>
+                <select v-model="formData.periodo_lectivo" class="form-select" required>
+                  <option value="">Seleccionar periodo lectivo</option>
+                  <option v-for="periodo in periodosLectivos" :key="periodo.id" :value="periodo.id">
+                    {{ periodo.periodo }}
+                  </option>
+                </select>
               </div>
 
               <div class="form-group">
@@ -154,6 +159,19 @@
                   </option>
                 </select>
               </div>
+
+              <div class="form-group">
+                <label class="form-label required">Profesor</label>
+                <select v-model="formData.profesor" class="form-select" required>
+                  <option value="">Seleccionar profesor</option>
+                  <option v-for="profesor in profesores" :key="profesor.id" :value="profesor.id">
+                    {{ profesor.persona?.nombre || profesor.nombre }} - {{ profesor.persona?.usuario?.email ||
+                      profesor.email || 'Sin email' }}
+                  </option>
+                </select>
+              </div>
+
+
 
               <div class="form-group">
                 <label class="form-label required">Docente responsable</label>

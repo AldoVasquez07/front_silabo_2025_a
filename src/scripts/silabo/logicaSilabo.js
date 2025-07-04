@@ -36,7 +36,7 @@ export default {
         facultad: '',
         carrera: '',
         curso: '',
-        
+
         // Datos generales adicionales
         semestre: '',
         area_formacion: '',
@@ -50,18 +50,18 @@ export default {
         codigo_curso: '',
         docente: '',
         correo_docente: '',
-        
+
         // Competencias y contenido
         competencia_curso: '',
         competencia_perfil: '',
         competencias_previas: '',
         sumilla: '',
         actividades_rsu: '',
-        
+
         // Arrays dinámicos
         unidades: [],
         criterios: [],
-        
+
         // Metadatos
         nombre: '',
         activo: true
@@ -81,14 +81,14 @@ export default {
     startIndex() { return (this.currentPage - 1) * this.itemsPerPage; },
     endIndex() { return Math.min(this.startIndex + this.itemsPerPage, this.totalItems); },
     paginatedSilabos() { return this.filteredSilabos.slice(this.startIndex, this.endIndex); },
-    
+
     // Cálculo del peso total de criterios
     totalPeso() {
       return this.formData.criterios.reduce((total, criterio) => {
         return total + (Number(criterio.peso) || 0);
       }, 0);
     },
-    
+
     visiblePages() {
       const pages = [], maxVisible = 5;
       if (this.totalPages <= maxVisible) {
@@ -96,14 +96,14 @@ export default {
       } else {
         const start = Math.max(1, this.currentPage - 2);
         const end = Math.min(this.totalPages, this.currentPage + 2);
-        if (start > 1) { 
-          pages.push(1); 
-          if (start > 2) pages.push('…'); 
+        if (start > 1) {
+          pages.push(1);
+          if (start > 2) pages.push('…');
         }
         for (let i = start; i <= end; i++) pages.push(i);
-        if (end < this.totalPages) { 
-          if (end < this.totalPages - 1) pages.push('…'); 
-          pages.push(this.totalPages); 
+        if (end < this.totalPages) {
+          if (end < this.totalPages - 1) pages.push('…');
+          pages.push(this.totalPages);
         }
       }
       return pages;
@@ -112,8 +112,8 @@ export default {
 
   /* ───────────── watchers ───────────── */
   watch: {
-    silabos() { 
-      this.applyFilters(); 
+    silabos() {
+      this.applyFilters();
     },
     searchTerm() {
       this.handleSearch();
@@ -122,6 +122,18 @@ export default {
     'formData.curso'(newCursoId) {
       if (newCursoId) {
         this.autocompletarDatosCurso(newCursoId);
+      }
+    },
+
+    'formData.profesor'(newProfesorId) {
+      if (newProfesorId) {
+        this.autocompletarDatosProfesor(newProfesorId);
+      }
+    },
+
+    'formData.periodo_lectivo'(newPeriodoId) {
+      if (newPeriodoId) {
+        this.autocompletarDatosPeriodo(newPeriodoId);
       }
     }
   },
@@ -140,7 +152,7 @@ export default {
   methods: {
     /* ---------- Fetches ---------- */
     async fetchSilabos() {
-      this.loading = true; 
+      this.loading = true;
       this.error = null;
       try {
         const token = localStorage.getItem('access_token');
@@ -149,10 +161,10 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar sílabos');
         this.silabos = await res.json();
-      } catch (err) { 
-        this.error = err.message; 
-      } finally { 
-        this.loading = false; 
+      } catch (err) {
+        this.error = err.message;
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -164,8 +176,8 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar periodos lectivos');
         this.periodosLectivos = await res.json();
-      } catch (err) { 
-        console.error('Error fetching periodos lectivos:', err.message); 
+      } catch (err) {
+        console.error('Error fetching periodos lectivos:', err.message);
       }
     },
 
@@ -177,8 +189,8 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar profesores');
         this.profesores = await res.json();
-      } catch (err) { 
-        console.error('Error fetching profesores:', err.message); 
+      } catch (err) {
+        console.error('Error fetching profesores:', err.message);
       }
     },
 
@@ -190,8 +202,8 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar facultades');
         this.facultades = await res.json();
-      } catch (err) { 
-        console.error('Error fetching facultades:', err.message); 
+      } catch (err) {
+        console.error('Error fetching facultades:', err.message);
       }
     },
 
@@ -203,8 +215,8 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar carreras');
         this.carreras = await res.json();
-      } catch (err) { 
-        console.error('Error fetching carreras:', err.message); 
+      } catch (err) {
+        console.error('Error fetching carreras:', err.message);
       }
     },
 
@@ -216,8 +228,8 @@ export default {
         });
         if (!res.ok) throw new Error('Error al cargar cursos');
         this.cursos = await res.json();
-      } catch (err) { 
-        console.error('Error fetching cursos:', err.message); 
+      } catch (err) {
+        console.error('Error fetching cursos:', err.message);
       }
     },
 
@@ -243,7 +255,7 @@ export default {
       try {
         // Buscar el curso en la lista ya cargada (más eficiente)
         let cursoDetalle = this.cursos.find(c => c.id == cursoId);
-        
+
         // Si no está en la lista o no tiene todos los detalles, hacer fetch
         if (!cursoDetalle || !cursoDetalle.semestre_detalle) {
           cursoDetalle = await this.fetchCursoDetalle(cursoId);
@@ -265,7 +277,7 @@ export default {
         // Autocompletar tipo de curso
         if (cursoDetalle.tipo_curso_detalle) {
           // Buscar el tipo en nuestro array local
-          const tipoEncontrado = this.tiposCurso.find(t => 
+          const tipoEncontrado = this.tiposCurso.find(t =>
             t.nombre.toLowerCase() === cursoDetalle.tipo_curso_detalle.nombre.toLowerCase()
           );
           if (tipoEncontrado) {
@@ -276,7 +288,7 @@ export default {
         // Autocompletar semestre
         if (cursoDetalle.semestre_detalle) {
           this.formData.semestre = cursoDetalle.semestre_detalle.nombre || '';
-          
+
           // Autocompletar periodo si existe
           if (cursoDetalle.semestre_detalle.semestre_academico_detalle) {
             this.formData.periodo = cursoDetalle.semestre_detalle.semestre_academico_detalle.periodo || '';
@@ -287,7 +299,7 @@ export default {
             const carrera = cursoDetalle.semestre_detalle.plan_detalle.carrera_detalle;
             this.formData.carrera = carrera.id; // Campo requerido por API
             this.formData.carrera_profesional = carrera.id; // Campo adicional
-            
+
             // Autocompletar facultad
             if (carrera.departamento_detalle?.facultad_detalle) {
               this.formData.facultad = carrera.departamento_detalle.facultad_detalle.id;
@@ -327,22 +339,74 @@ export default {
       }
     },
 
+    autocompletarDatosProfesor(profesorId) {
+      if (!profesorId) return;
+
+      try {
+        // Buscar el profesor en la lista ya cargada
+        const profesorSeleccionado = this.profesores.find(p => p.id == profesorId);
+
+        if (!profesorSeleccionado) return;
+
+        // Autocompletar campos del docente
+        if (profesorSeleccionado.persona) {
+          this.formData.docente = profesorSeleccionado.persona.nombre || '';
+          this.formData.correo_docente = profesorSeleccionado.persona.usuario?.email || '';
+        } else {
+          // Si no tiene estructura de persona, usar campos directos
+          this.formData.docente = profesorSeleccionado.nombre || '';
+          this.formData.correo_docente = profesorSeleccionado.email || '';
+        }
+
+        console.log('Datos del profesor autocompletados:', {
+          nombre: this.formData.docente,
+          email: this.formData.correo_docente
+        });
+
+      } catch (err) {
+        console.error('Error al autocompletar datos del profesor:', err.message);
+      }
+    },
+
+    autocompletarDatosPeriodo(periodoId) {
+      if (!periodoId) return;
+
+      try {
+        // Buscar el periodo en la lista ya cargada
+        const periodoSeleccionado = this.periodosLectivos.find(p => p.id == periodoId);
+
+        if (!periodoSeleccionado) return;
+
+        // Autocompletar campo periodo (para mostrar en el formulario)
+        this.formData.periodo = periodoSeleccionado.periodo || '';
+
+        console.log('Datos del periodo lectivo autocompletados:', {
+          id: periodoSeleccionado.id,
+          periodo: periodoSeleccionado.periodo,
+          anio: periodoSeleccionado.anio || ''
+        });
+
+      } catch (err) {
+        console.error('Error al autocompletar datos del periodo:', err.message);
+      }
+    },
+
     /* ---------- Validaciones ---------- */
     validateForm() {
       const errors = [];
-      
+
       // Validar campos requeridos por la API
       if (!this.formData.periodo_lectivo) errors.push('El periodo lectivo es requerido');
       if (!this.formData.profesor) errors.push('El profesor es requerido');
       if (!this.formData.facultad) errors.push('La facultad es requerida');
       if (!this.formData.carrera) errors.push('La carrera es requerida');
       if (!this.formData.curso) errors.push('El curso es requerido');
-      
+
       // Validar peso de criterios
       if (this.formData.criterios.length > 0 && this.totalPeso !== 100) {
         errors.push('La suma de los pesos de evaluación debe ser exactamente 100%');
       }
-      
+
       return errors;
     },
 
@@ -389,14 +453,14 @@ export default {
         return;
       }
 
-      this.loading = true; 
+      this.loading = true;
       this.error = null;
-      
+
       try {
         const token = localStorage.getItem('access_token');
         const url = this.editingItem ? SILABO_API.DETAIL(this.editingItem.id) : SILABO_API.LIST;
         const method = this.editingItem ? 'PUT' : 'POST';
-        
+
         // Preparar payload asegurando que los campos requeridos estén presentes
         const payload = {
           // Campos requeridos por la API
@@ -405,7 +469,7 @@ export default {
           facultad: this.formData.facultad,
           carrera: this.formData.carrera,
           curso: this.formData.curso,
-          
+
           // Campos adicionales
           nombre: this.formData.nombre || `Sílabo ${this.formData.codigo_curso} - ${this.formData.periodo}`,
           semestre: this.formData.semestre,
@@ -421,6 +485,8 @@ export default {
           correo_docente: this.formData.correo_docente,
           competencia_curso: this.formData.competencia_curso,
           competencia_perfil: this.formData.competencia_perfil,
+          competencia_perfil_egreso: this.formData.competencia_perfil, // Mapeo bidireccional
+          competencia_profesional: this.formData.competencias_previas,
           competencias_previas: this.formData.competencias_previas,
           sumilla: this.formData.sumilla,
           actividades_rsu: this.formData.actividades_rsu,
@@ -441,7 +507,7 @@ export default {
         if (!res.ok) {
           const errorData = await res.json();
           console.error('Error response:', errorData);
-          
+
           // Formatear errores de validación
           const errorMessages = [];
           if (typeof errorData === 'object') {
@@ -453,24 +519,25 @@ export default {
               }
             }
           }
-          
+
           throw new Error(errorMessages.length > 0 ? errorMessages.join('; ') : 'Error al procesar la solicitud');
         }
 
         await this.fetchSilabos();
         this.cancelForm();
-        
+
         // Mostrar mensaje de éxito
         console.log(`Sílabo ${this.editingItem ? 'actualizado' : 'creado'} exitosamente`);
-        
-      } catch (err) { 
-        this.error = err.message; 
+
+      } catch (err) {
+        this.error = err.message;
         console.error('Error en submitForm:', err);
-      } finally { 
-        this.loading = false; 
+      } finally {
+        this.loading = false;
       }
     },
 
+    /* ---------- Editar ---------- */
     /* ---------- Editar ---------- */
     editItem(silabo) {
       this.editingItem = silabo;
@@ -481,7 +548,7 @@ export default {
         facultad: silabo.facultad || '',
         carrera: silabo.carrera || '',
         curso: silabo.curso || '',
-        
+
         // Campos adicionales
         nombre: silabo.nombre || '',
         semestre: silabo.semestre || '',
@@ -497,8 +564,11 @@ export default {
         docente: silabo.docente || silabo.profesor_detalle?.persona?.nombre || '',
         correo_docente: silabo.correo_docente || silabo.profesor_detalle?.persona?.usuario?.email || '',
         competencia_curso: silabo.competencia_curso || '',
+
+        // CORRECCIÓN: Mapeo bidireccional correcto
         competencia_perfil: silabo.competencia_perfil || silabo.competencia_perfil_egreso || '',
         competencias_previas: silabo.competencias_previas || silabo.competencia_profesional || '',
+
         sumilla: silabo.sumilla || '',
         actividades_rsu: silabo.actividades_rsu || '',
         unidades: silabo.unidades || [],
@@ -511,10 +581,10 @@ export default {
     /* ---------- Eliminar ---------- */
     async deleteItem(silabo) {
       if (!confirm(`¿Está seguro de eliminar el sílabo "${silabo.nombre}"?`)) return;
-      
-      this.loading = true; 
+
+      this.loading = true;
       this.error = null;
-      
+
       try {
         const token = localStorage.getItem('access_token');
         const res = await fetch(SILABO_API.DETAIL(silabo.id), {
@@ -523,10 +593,10 @@ export default {
         });
         if (!res.ok) throw new Error('Error al eliminar el sílabo');
         await this.fetchSilabos();
-      } catch (err) { 
-        this.error = err.message; 
-      } finally { 
-        this.loading = false; 
+      } catch (err) {
+        this.error = err.message;
+      } finally {
+        this.loading = false;
       }
     },
 
@@ -546,7 +616,7 @@ export default {
         facultad: '',
         carrera: '',
         curso: '',
-        
+
         // Campos adicionales
         nombre: '',
         semestre: '',
@@ -573,17 +643,17 @@ export default {
     },
 
     /* ---------- Paginación / Búsqueda ---------- */
-    goToPage(page) { 
-      if (page >= 1 && page <= this.totalPages) this.currentPage = page; 
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) this.currentPage = page;
     },
-    
-    changeItemsPerPage() { 
-      this.currentPage = 1; 
+
+    changeItemsPerPage() {
+      this.currentPage = 1;
     },
-    
-    handleSearch() { 
-      this.currentPage = 1; 
-      this.applyFilters(); 
+
+    handleSearch() {
+      this.currentPage = 1;
+      this.applyFilters();
     },
 
     applyFilters() {
