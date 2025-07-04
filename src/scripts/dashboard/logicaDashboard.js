@@ -75,13 +75,17 @@ export default {
         competenciasEvaluacion: false,
         recursosAcademicos: false,
         tablasMaestras: false
+      },
+      rolePermissions: {
+        admin: ['gestionUsuarios', 'estructuraInstitucional', 'curriculoAcademico', 'planificacionAcademica', 'competenciasEvaluacion', 'recursosAcademicos', 'reportes', 'configuracion'],
+        profesor: ['curriculoAcademico', 'planificacionAcademica', 'competenciasEvaluacion']
       }
     }
   },
   mounted() {
     this.checkMobile()
     window.addEventListener('resize', this.checkMobile)
-    
+
     // Configurar submenús activos basados en la sección activa
     if (TABLAS_MAESTRAS_SECTIONS.includes(this.activeSection)) {
       this.setActiveSubMenu()
@@ -91,6 +95,10 @@ export default {
     window.removeEventListener('resize', this.checkMobile)
   },
   methods: {
+    canAccess(section) {
+      const userRole = this.rolUser.toLowerCase();
+      return this.rolePermissions[userRole]?.includes(section) || false;
+    },
     checkMobile() {
       this.isMobile = window.innerWidth <= 768
       if (!this.isMobile) {
@@ -134,7 +142,7 @@ export default {
       Object.keys(this.subMenus).forEach(key => {
         this.subMenus[key] = false
       })
-      
+
       // Activar el submenú correspondiente
       if (this.isParentActive('gestionUsuarios')) {
         this.subMenus.gestionUsuarios = true
@@ -149,7 +157,7 @@ export default {
       } else if (this.isParentActive('recursosAcademicos')) {
         this.subMenus.recursosAcademicos = true
       }
-      
+
       // Mantener compatibilidad con tablasMaestras
       if (TABLAS_MAESTRAS_SECTIONS.includes(this.activeSection)) {
         this.subMenus.tablasMaestras = true
@@ -171,7 +179,7 @@ export default {
         // Mantener compatibilidad
         tablasMaestras: TABLAS_MAESTRAS_SECTIONS
       }
-      
+
       return menuSections[menu] && menuSections[menu].includes(this.activeSection)
     },
     getToggleIcon() {

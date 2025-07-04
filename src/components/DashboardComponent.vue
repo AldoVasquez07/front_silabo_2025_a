@@ -30,7 +30,7 @@
           </li>
 
           <!-- Gestión de Usuarios -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('gestionUsuarios')">
             <a href="#" @click="toggleSubMenu('gestionUsuarios')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('gestionUsuarios') }">
@@ -64,7 +64,7 @@
           </li>
 
           <!-- Estructura Institucional -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('estructuraInstitucional')">
             <a href="#" @click="toggleSubMenu('estructuraInstitucional')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('estructuraInstitucional') }">
@@ -119,7 +119,7 @@
           </li>
 
           <!-- Currículo Académico -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('curriculoAcademico')">
             <a href="#" @click="toggleSubMenu('curriculoAcademico')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('curriculoAcademico') }">
@@ -167,7 +167,7 @@
           </li>
 
           <!-- Planificación Académica -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('planificacionAcademica')">
             <a href="#" @click="toggleSubMenu('planificacionAcademica')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('planificacionAcademica') }">
@@ -208,7 +208,7 @@
           </li>
 
           <!-- Competencias y Evaluación -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('competenciasEvaluacion')">
             <a href="#" @click="toggleSubMenu('competenciasEvaluacion')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('competenciasEvaluacion') }">
@@ -235,7 +235,7 @@
           </li>
 
           <!-- Recursos Académicos -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('recursosAcademicos')">
             <a href="#" @click="toggleSubMenu('recursosAcademicos')"
               class="nav-link d-flex justify-content-between align-items-center"
               :class="{ active: isParentActive('recursosAcademicos') }">
@@ -269,7 +269,7 @@
           </li>
 
           <!-- Reportes -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('reportes')">
             <a href="#" @click="setActiveSection('reportes')" class="nav-link"
               :class="{ active: activeSection === 'reportes' }">
               <i class="fas fa-chart-bar sidebar-icon"></i>
@@ -278,7 +278,7 @@
           </li>
 
           <!-- Configuración -->
-          <li class="nav-item">
+          <li class="nav-item" v-if="canAccess('configuracion')">
             <a href="#" @click="setActiveSection('configuracion')" class="nav-link"
               :class="{ active: activeSection === 'configuracion' }">
               <i class="fas fa-cog sidebar-icon"></i>
