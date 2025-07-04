@@ -42,7 +42,8 @@ export const COMPETENCIA_API = {
 
 export const CRITERIO_API = {
   LIST: `${BACK_URL}/criterios/`,
-  DETAIL: (id) => `${BACK_URL}/criterios/${id}/`
+  DETAIL: (id) => `${BACK_URL}/criterios/${id}/`,
+  SILABO: (silabo_id) => `${BACK_URL}/criterios/?silabo_id=${silabo_id}`
 }
 
 export const AREA_API = {

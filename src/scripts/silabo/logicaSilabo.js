@@ -6,7 +6,8 @@ import {
   FACULTADES_API,
   CARRERAS_API,
   CURSO_API,
-  UNIDAD_API  // ← NUEVA IMPORTACIÓN
+  UNIDAD_API,
+  CRITERIO_API
 } from '@/config/constants';
 
 export default {
@@ -21,7 +22,8 @@ export default {
       facultades: [],
       carreras: [],
       cursos: [],
-      unidadesExistentes: [], // ← NUEVO: Para almacenar unidades del servidor
+      unidadesExistentes: [],
+      criteriosExistentes: [],
       tiposCurso: [
         { id: 'obligatorio', nombre: 'Obligatorio' },
         { id: 'electivo', nombre: 'Electivo' },
@@ -219,6 +221,131 @@ export default {
         this.carreras = await res.json();
       } catch (err) {
         console.error('Error fetching carreras:', err.message);
+      }
+    },
+
+    async fetchCriteriosPorSilabo(silaboId) {
+      if (!silaboId) {
+        this.criteriosExistentes = [];
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(CRITERIO_API.SILABO(silaboId), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al cargar criterios del sílabo');
+        this.criteriosExistentes = await res.json();
+
+        // Cargar los criterios existentes en el formulario
+        this.cargarCriteriosEnFormulario();
+
+        console.log(`Cargados ${this.criteriosExistentes.length} criterios para el sílabo ${silaboId}`);
+      } catch (err) {
+        console.error('Error fetching criterios por sílabo:', err.message);
+        this.criteriosExistentes = [];
+      }
+    },
+
+    cargarCriteriosEnFormulario() {
+      this.formData.criterios = this.criteriosExistentes.map(criterio => ({
+        id: criterio.id, // ID para identificar si es existente
+        evaluacion: criterio.nombre || '', // Mapear 'nombre' a 'evaluacion'
+        peso: criterio.peso ? criterio.peso * 100 : 0, // Convertir decimal a porcentaje
+        fecha: criterio.fecha_inicio || '',
+        descripcion: criterio.descripcion || '',
+        fecha_fin: criterio.fecha_fin || '' // Campo adicional si lo necesitas
+      }));
+    },
+
+    async guardarCriterio(criterioData, silaboId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const isUpdate = criterioData.id;
+
+        const payload = {
+          nombre: criterioData.evaluacion,
+          peso: criterioData.peso / 100, // Convertir porcentaje a decimal
+          fecha_inicio: criterioData.fecha,
+          fecha_fin: criterioData.fecha_fin || criterioData.fecha,
+          descripcion: criterioData.descripcion,
+          silabo: silaboId
+        };
+
+        const url = isUpdate ? CRITERIO_API.DETAIL(criterioData.id) : CRITERIO_API.LIST;
+        const method = isUpdate ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(`Error al ${isUpdate ? 'actualizar' : 'crear'} criterio: ${JSON.stringify(errorData)}`);
+        }
+
+        return await res.json();
+      } catch (err) {
+        console.error('Error guardando criterio:', err.message);
+        throw err;
+      }
+    },
+
+    async eliminarCriterioDelServidor(criterioId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(CRITERIO_API.DETAIL(criterioId), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Error al eliminar criterio del servidor');
+        }
+
+        console.log(`Criterio ${criterioId} eliminado del servidor`);
+      } catch (err) {
+        console.error('Error eliminando criterio:', err.message);
+        throw err;
+      }
+    },
+
+    async removeCriterio(index) {
+      if (!confirm('¿Está seguro de eliminar este criterio?')) return;
+
+      const criterio = this.formData.criterios[index];
+
+      // Si el criterio tiene ID, eliminarlo del servidor
+      if (criterio.id) {
+        try {
+          await this.eliminarCriterioDelServidor(criterio.id);
+        } catch (err) {
+          this.error = `Error al eliminar criterio: ${err.message}`;
+          return;
+        }
+      }
+
+      // Eliminar de la lista local
+      this.formData.criterios.splice(index, 1);
+    },
+
+    async guardarCriteriosPorSeparado(silaboId) {
+      try {
+        const promesasCriterios = this.formData.criterios.map(criterio =>
+          this.guardarCriterio(criterio, silaboId)
+        );
+
+        await Promise.all(promesasCriterios);
+        console.log(`${this.formData.criterios.length} criterios guardados exitosamente`);
+      } catch (err) {
+        console.error('Error guardando criterios:', err.message);
+        throw new Error(`Error al guardar criterios: ${err.message}`);
       }
     },
 
@@ -616,7 +743,6 @@ export default {
           competencias_previas: this.formData.competencias_previas,
           sumilla: this.formData.sumilla,
           actividades_rsu: this.formData.actividades_rsu,
-          criterios: this.formData.criterios,
           activo: this.formData.activo
         };
 
@@ -654,6 +780,10 @@ export default {
         // Guardar unidades por separado
         if (this.formData.unidades.length > 0) {
           await this.guardarUnidadesPorSeparado(silaboId);
+        }
+
+        if (this.formData.criterios.length > 0) {
+          await this.guardarCriteriosPorSeparado(silaboId);
         }
 
         await this.fetchSilabos();
@@ -715,12 +845,14 @@ export default {
         sumilla: silabo.sumilla || '',
         actividades_rsu: silabo.actividades_rsu || '',
         unidades: [], // Se cargarán por separado
-        criterios: silabo.criterios || [],
+        criterios: [],
         activo: silabo.activo !== undefined ? silabo.activo : true
       };
 
       // Cargar unidades existentes del servidor
       await this.fetchUnidadesPorSilabo(silabo.id);
+
+      await this.fetchCriteriosPorSilabo(silabo.id);
 
       this.showCreateForm = true;
     },
@@ -752,6 +884,7 @@ export default {
       this.editingItem = null;
       this.showCreateForm = false;
       this.unidadesExistentes = []; // Limpiar unidades existentes
+      this.criteriosExistentes = [];
       this.resetFormData();
       this.error = null;
     },

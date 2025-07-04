@@ -284,14 +284,12 @@
 
                   <div class="form-group">
                     <label class="form-label required">Fecha de inicio</label>
-                    <input v-model="unidad.inicio" type="text" class="form-input"
-                      placeholder="aaaa-mm-dd" required>
+                    <input v-model="unidad.inicio" type="text" class="form-input" placeholder="aaaa-mm-dd" required>
                   </div>
 
                   <div class="form-group">
                     <label class="form-label required">Fecha de fin</label>
-                    <input v-model="unidad.final" type="text" class="form-input"
-                      placeholder="aaaa-mm-dd" required>
+                    <input v-model="unidad.final" type="text" class="form-input" placeholder="aaaa-mm-dd" required>
                   </div>
                 </div>
 
@@ -367,7 +365,8 @@
               <div class="table-header">
                 <div class="table-cell">Evaluación</div>
                 <div class="table-cell">Peso (%)</div>
-                <div class="table-cell">Fecha</div>
+                <div class="table-cell">Fecha Inicio</div>
+                <div class="table-cell">Fecha Fin</div>
                 <div class="table-cell">Descripción</div>
                 <div class="table-cell">Acción</div>
               </div>
@@ -376,16 +375,23 @@
                 <div class="table-cell">
                   <input v-model="crit.evaluacion" type="text" class="form-input-sm" placeholder="Examen parcial"
                     required>
+                  <!-- Indicador de estado -->
+                  <small v-if="crit.id" class="text-blue-600">✓ Guardado</small>
+                  <small v-else class="text-orange-600">⚠ Nuevo</small>
                 </div>
                 <div class="table-cell">
                   <input v-model.number="crit.peso" type="number" min="0" max="100" class="form-input-sm"
                     placeholder="30" required>
                 </div>
                 <div class="table-cell">
-                  <input v-model="crit.fecha" type="date" class="form-input-sm">
+                  <input v-model="crit.fecha" type="date" class="form-input-sm" required>
                 </div>
                 <div class="table-cell">
-                  <input v-model="crit.descripcion" type="text" class="form-input-sm" placeholder="Descripción">
+                  <input v-model="crit.fecha_fin" type="date" class="form-input-sm">
+                </div>
+                <div class="table-cell">
+                  <textarea v-model="crit.descripcion" class="form-input-sm" placeholder="Descripción detallada"
+                    rows="2"></textarea>
                 </div>
                 <div class="table-cell">
                   <button type="button" class="btn-remove-sm" @click="removeCriterio(idx)">
@@ -405,6 +411,13 @@
                 <span v-if="totalPeso > 100" class="peso-message">⚠️ Excede 100%</span>
                 <span v-else-if="totalPeso === 100" class="peso-message">✅ Completo</span>
                 <span v-else class="peso-message">Falta {{ 100 - totalPeso }}%</span>
+              </div>
+
+              <!-- Información adicional -->
+              <div v-if="criteriosExistentes.length > 0" class="info-box">
+                <p class="text-sm text-gray-600">
+                  📋 Se cargaron {{ criteriosExistentes.length }} criterios existentes del servidor
+                </p>
               </div>
             </div>
           </div>
@@ -479,4 +492,194 @@ export default {
 <style scoped>
 @import '@/assets/silabo/particular.css';
 @import '@/assets/global_design/general_component_design.css';
+
+
+.criterios-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 3fr 0.5fr;
+  background: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+  font-weight: 600;
+  color: #495057;
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.5fr 1.5fr 3fr 0.5fr;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table-row:hover {
+  background: #f8f9fa;
+}
+
+.table-cell {
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-input-sm {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-input-sm:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.btn-remove-sm {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-remove-sm:hover {
+  background: #c82333;
+}
+
+.peso-summary {
+  padding: 16px;
+  background: #f8f9fa;
+  border-top: 2px solid #e9ecef;
+  text-align: center;
+  font-size: 16px;
+}
+
+.peso-warning {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.peso-complete {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.peso-message {
+  margin-left: 12px;
+  font-weight: normal;
+  font-size: 14px;
+}
+
+.info-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: #e3f2fd;
+  border-radius: 6px;
+  border-left: 4px solid #2196f3;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.empty-icon {
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-subtext {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+.section-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.section-number {
+  background: #007bff;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.section-title {
+  flex: 1;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.btn-add {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-add:hover {
+  background: #218838;
+}
+
+.text-blue-600 {
+  color: #2563eb;
+}
+
+.text-orange-600 {
+  color: #ea580c;
+}
+
+.text-sm {
+  font-size: 12px;
+}
+
+.text-gray-600 {
+  color: #6b7280;
+}
 </style>
