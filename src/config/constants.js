@@ -8,7 +8,8 @@ export const UNIVERSIDADES_API = {
 
 export const ACTIVIDADES_API = {
   LIST: `${BACK_URL}/actividades/`,
-  DETAIL: (id) => `${BACK_URL}/actividades/${id}/`
+  DETAIL: (id) => `${BACK_URL}/actividades/${id}/`,
+  SILABO: (silabo_id) => `${BACK_URL}/actividades/?silabo_id=${silabo_id}`
 };
 
 export const ESTUDIANTES_API = {

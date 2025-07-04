@@ -7,7 +7,8 @@ import {
   CARRERAS_API,
   CURSO_API,
   UNIDAD_API,
-  CRITERIO_API
+  CRITERIO_API,
+  ACTIVIDADES_API
 } from '@/config/constants';
 
 export default {
@@ -24,6 +25,7 @@ export default {
       cursos: [],
       unidadesExistentes: [],
       criteriosExistentes: [],
+      actividadesExistentes: [],
       tiposCurso: [
         { id: 'obligatorio', nombre: 'Obligatorio' },
         { id: 'electivo', nombre: 'Electivo' },
@@ -61,6 +63,7 @@ export default {
         competencias_previas: '',
         sumilla: '',
         actividades_rsu: '',
+        actividades: [],
 
         // Arrays dinámicos
         unidades: [],
@@ -346,6 +349,144 @@ export default {
       } catch (err) {
         console.error('Error guardando criterios:', err.message);
         throw new Error(`Error al guardar criterios: ${err.message}`);
+      }
+    },
+
+    async fetchActividadesPorSilabo(silaboId) {
+      if (!silaboId) {
+        this.actividadesExistentes = [];
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(ACTIVIDADES_API.SILABO(silaboId), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Error al cargar actividades del sílabo');
+        this.actividadesExistentes = await res.json();
+
+        // Cargar las actividades existentes en el formulario
+        this.cargarActividadesEnFormulario();
+
+        console.log(`Cargadas ${this.actividadesExistentes.length} actividades para el sílabo ${silaboId}`);
+      } catch (err) {
+        console.error('Error fetching actividades por sílabo:', err.message);
+        this.actividadesExistentes = [];
+      }
+    },
+
+    /* ---------- NUEVO: Cargar actividades existentes en el formulario ---------- */
+    cargarActividadesEnFormulario() {
+      this.formData.actividades = this.actividadesExistentes.map(actividad => ({
+        id: actividad.id, // ID para identificar si es existente
+        nombre: actividad.nombre || '',
+        descripcion: actividad.descripcion || ''
+      }));
+
+      // Actualizar el campo legacy actividades_rsu para compatibilidad
+      if (this.actividadesExistentes.length > 0) {
+        this.formData.actividades_rsu = this.actividadesExistentes
+          .map(a => `${a.nombre}: ${a.descripcion}`)
+          .join('\n');
+      }
+    },
+
+    /* ---------- NUEVO: Guardar actividad individual ---------- */
+    async guardarActividad(actividadData, silaboId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const isUpdate = actividadData.id;
+
+        const payload = {
+          nombre: actividadData.nombre,
+          descripcion: actividadData.descripcion,
+          silabo: silaboId
+        };
+
+        const url = isUpdate ? ACTIVIDADES_API.DETAIL(actividadData.id) : ACTIVIDADES_API.LIST;
+        const method = isUpdate ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+          method,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(`Error al ${isUpdate ? 'actualizar' : 'crear'} actividad: ${JSON.stringify(errorData)}`);
+        }
+
+        return await res.json();
+      } catch (err) {
+        console.error('Error guardando actividad:', err.message);
+        throw err;
+      }
+    },
+
+    /* ---------- NUEVO: Eliminar actividad del servidor ---------- */
+    async eliminarActividadDelServidor(actividadId) {
+      try {
+        const token = localStorage.getItem('access_token');
+        const res = await fetch(ACTIVIDADES_API.DETAIL(actividadId), {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok) {
+          throw new Error('Error al eliminar actividad del servidor');
+        }
+
+        console.log(`Actividad ${actividadId} eliminada del servidor`);
+      } catch (err) {
+        console.error('Error eliminando actividad:', err.message);
+        throw err;
+      }
+    },
+
+    /* ---------- NUEVO: Manejo de Actividades RSU ---------- */
+    addActividad() {
+      this.formData.actividades.push({
+        nombre: '',
+        descripcion: ''
+      });
+    },
+
+    async removeActividad(index) {
+      if (!confirm('¿Está seguro de eliminar esta actividad?')) return;
+
+      const actividad = this.formData.actividades[index];
+
+      // Si la actividad tiene ID, eliminarla del servidor
+      if (actividad.id) {
+        try {
+          await this.eliminarActividadDelServidor(actividad.id);
+        } catch (err) {
+          this.error = `Error al eliminar actividad: ${err.message}`;
+          return;
+        }
+      }
+
+      // Eliminar de la lista local
+      this.formData.actividades.splice(index, 1);
+    },
+
+    /* ---------- NUEVO: Guardar actividades por separado ---------- */
+    async guardarActividadesPorSeparado(silaboId) {
+      try {
+        const promesasActividades = this.formData.actividades.map(actividad =>
+          this.guardarActividad(actividad, silaboId)
+        );
+
+        await Promise.all(promesasActividades);
+        console.log(`${this.formData.actividades.length} actividades guardadas exitosamente`);
+      } catch (err) {
+        console.error('Error guardando actividades:', err.message);
+        throw new Error(`Error al guardar actividades: ${err.message}`);
       }
     },
 
@@ -643,6 +784,12 @@ export default {
         if (!unidad.descripcion && !unidad.denominacion) errors.push(`La unidad ${index + 1} requiere descripción`);
       });
 
+      this.formData.actividades.forEach((actividad, index) => {
+        if (!actividad.nombre) errors.push(`La actividad ${index + 1} requiere nombre`);
+        if (!actividad.descripcion) errors.push(`La actividad ${index + 1} requiere descripción`);
+      });
+
+
       return errors;
     },
 
@@ -786,6 +933,10 @@ export default {
           await this.guardarCriteriosPorSeparado(silaboId);
         }
 
+        if (this.formData.actividades.length > 0) {
+          await this.guardarActividadesPorSeparado(silaboId);
+        }
+
         await this.fetchSilabos();
         this.cancelForm();
 
@@ -844,6 +995,7 @@ export default {
         competencias_previas: silabo.competencias_previas || silabo.competencia_profesional || '',
         sumilla: silabo.sumilla || '',
         actividades_rsu: silabo.actividades_rsu || '',
+        actividades: [],
         unidades: [], // Se cargarán por separado
         criterios: [],
         activo: silabo.activo !== undefined ? silabo.activo : true
@@ -853,6 +1005,8 @@ export default {
       await this.fetchUnidadesPorSilabo(silabo.id);
 
       await this.fetchCriteriosPorSilabo(silabo.id);
+
+      await this.fetchActividadesPorSilabo(silabo.id);
 
       this.showCreateForm = true;
     },
@@ -885,6 +1039,7 @@ export default {
       this.showCreateForm = false;
       this.unidadesExistentes = []; // Limpiar unidades existentes
       this.criteriosExistentes = [];
+      this.actividadesExistentes = [];
       this.resetFormData();
       this.error = null;
     },
@@ -917,6 +1072,7 @@ export default {
         competencias_previas: '',
         sumilla: '',
         actividades_rsu: '',
+        actividades: [],
         unidades: [],
         criterios: [],
         activo: true
