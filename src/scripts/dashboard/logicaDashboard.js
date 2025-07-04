@@ -16,7 +16,6 @@ import SemanaComponent from '@/components/SemanaComponent.vue'
 import UnidadComponent from '@/components/UnidadComponent.vue'
 import SilaboComponent from '@/components/SilaboComponent.vue'
 
-import { ref } from 'vue'
 
 const TABLAS_MAESTRAS_SECTIONS = [
   'estudiantes',
@@ -63,6 +62,7 @@ export default {
     return {
       fullName: localStorage.getItem('name') ?? '',
       emailUser: localStorage.getItem('email') ?? '',
+      rolUser: localStorage.getItem('rol') ?? '',
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
       isMobile: false,
@@ -74,7 +74,6 @@ export default {
         planificacionAcademica: false,
         competenciasEvaluacion: false,
         recursosAcademicos: false,
-        // Mantener compatibilidad con el código anterior
         tablasMaestras: false
       }
     }
